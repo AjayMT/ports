@@ -16,7 +16,7 @@ class Ports(nodenet.Node):
         self.emit('register', service, to=peers)
 
     def register(self, name, **kwargs):
-        if not self.peers:
+        if not self.sockname[0]:
             return None
 
         ports = []
@@ -25,10 +25,10 @@ class Ports(nodenet.Node):
 
         rng = kwargs.get('range')
         port = kwargs.get('port')
-        while port not in ports:
+        while port in ports or port is None:
             port = randrange(*(rng or (10000, 65535)))
 
-        service = {'port': port, 'id': uuid4()}
+        service = {'port': port, 'id': str(uuid4())}
 
         if not self.services.get(name):
             self.services[name] = []
