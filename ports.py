@@ -10,13 +10,21 @@ class Ports(nodenet.Node):
 
         self.services = {}
         self.ports = []
+        self._auto_bound = False
+
+        self.on('connect', self._on_connect)
         self.on('register', self._on_register)
-        self.on('bound', self._on_bound)
+        self.on('auto-bind', self._on_auto_bind)
         self.on('unregister', self._on_unregister)
-        self.on('disconnect', self._on_disconnect)
         self.on('close', self._on_close)
+        self.on('disconnect', self._on_disconnect)
+
+    def _on_connect(self, who):
+        if self._auto_bound:
+            self.emit('auto-bind', to=[who])
 
     def _on_register(self, who, service):
+        service['_peer'] = tuple(service['_peer'])
         if service['name'] not in self.services:
             self.services[service['name']] = []
 
@@ -28,11 +36,12 @@ class Ports(nodenet.Node):
         peers = [p for p in self.peers if not who == p]
         self.emit('register', s, to=peers)
 
-    def _on_bound(self, who):
+    def _on_auto_bind(self, who):
         host, port = who
         self.ports.append(port)
 
     def _on_unregister(self, who, service):
+        service['_peer'] = tuple(service['_peer'])
         self.services[service['name']].remove(service)
 
     def _on_close(self, *args):
@@ -42,7 +51,8 @@ class Ports(nodenet.Node):
          if s['_peer'] == self.sockname]
 
     def _on_disconnect(self, who):
-        self.ports.remove(who[1])
+        if who[1] in self.ports:
+            self.ports.remove(who[1])
 
     def _bind(self):
         port = randrange(10000, 65535)
@@ -50,7 +60,7 @@ class Ports(nodenet.Node):
             port = randrange(10000, 65535)
 
         self.bind('127.0.0.1', port)
-        self.emit('bound')
+        self._auto_bound = True
 
     def register(self, name, **kwargs):
         if self.sockname == (None, None):
