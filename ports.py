@@ -39,7 +39,7 @@ class Ports(nodenet.Node):
         self.ports.append(port)
 
         peers = [p for p in self.peers if not who == p]
-        self.emit('auto-bind', port)
+        self.emit('auto-bind', port, to=peers)
 
     def _on_unregister(self, who, service):
         service['_peer'] = tuple(service['_peer'])
@@ -91,7 +91,9 @@ class Ports(nodenet.Node):
         return service
 
     def unregister(self, service):
-        self._on_unregister(self.sockname, service)
+        service['_peer'] = tuple(service['_peer'])
+        self.services[service['name']].remove(service)
+
         self.emit('unregister', service)
 
     def connect(self, *who):
