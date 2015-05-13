@@ -17,11 +17,10 @@ class Ports(nodenet.Node):
         self.on('auto-bind', self._on_auto_bind)
         self.on('unregister', self._on_unregister)
         self.on('close', self._on_close)
-        self.on('disconnect', self._on_disconnect)
 
     def _on_connect(self, who):
         if self._auto_bound:
-            self.emit('auto-bind', to=[who])
+            self.emit('auto-bind', self.sockname[1], to=[who])
 
     def _on_register(self, who, service):
         service['_peer'] = tuple(service['_peer'])
@@ -36,13 +35,19 @@ class Ports(nodenet.Node):
         peers = [p for p in self.peers if not who == p]
         self.emit('register', s, to=peers)
 
-    def _on_auto_bind(self, who):
-        host, port = who
+    def _on_auto_bind(self, who, port):
         self.ports.append(port)
+
+        peers = [p for p in self.peers if not who == p]
+        self.emit('auto-bind', port)
 
     def _on_unregister(self, who, service):
         service['_peer'] = tuple(service['_peer'])
         self.services[service['name']].remove(service)
+
+        service['_peer'] = self.sockname
+        peers = [p for p in self.peers if not who == p]
+        self.emit('unregister', service, to=peers)
 
     def _on_close(self, *args):
         def lsum(l): return l[0] + lsum(l[1:]) if l else []
@@ -51,6 +56,8 @@ class Ports(nodenet.Node):
          if s['_peer'] == self.sockname]
 
     def _on_disconnect(self, who):
+        super(Ports, self)._on_disconnect(who)
+
         if who[1] in self.ports:
             self.ports.remove(who[1])
 
