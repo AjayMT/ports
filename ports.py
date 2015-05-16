@@ -2,6 +2,10 @@
 import nodenet
 from random import randrange
 from uuid import uuid4
+from fnmatch import fnmatch
+
+
+def _lsum(l): return l[0] + _lsum(l[1:]) if l else []
 
 
 class Ports(nodenet.Node):
@@ -50,9 +54,7 @@ class Ports(nodenet.Node):
         self.emit('unregister', service, to=peers)
 
     def _on_close(self, *args):
-        def lsum(l): return l[0] + lsum(l[1:]) if l else []
-
-        [self.unregister(s) for s in lsum(self.services.values())
+        [self.unregister(s) for s in _lsum(self.services.values())
          if s['_peer'] == self.sockname]
 
     def _on_disconnect(self, who):
@@ -68,6 +70,13 @@ class Ports(nodenet.Node):
 
         self.bind('127.0.0.1', port)
         self._auto_bound = True
+
+    def __getitem__(self, item):
+        return _lsum([ss for name, ss in self.services.items()
+                      if fnmatch(name, item)])
+
+    def __contains__(self, item):
+        return bool(self[item])
 
     def register(self, name, **kwargs):
         if self.sockname == (None, None):
